@@ -6,13 +6,23 @@ from tkinter import Tk, Button, filedialog, Label, Listbox, EXTENDED, Scrollbar,
 def analyze_paths(input_file):
     doc = minidom.parse(input_file)
     paths = doc.getElementsByTagName('path')
+    rect = doc.getElementsByTagName('rect')[0]
+    svg_elem = doc.getElementsByTagName('svg')[0]
+    width = svg_elem.getAttribute('width')
+    height = svg_elem.getAttribute('height')
     path_data = []
     for idx, path in enumerate(paths):
         color = path.getAttribute('stroke')
         if color.startswith('rgb'):
             path_data.append((idx, color, path))
     path_data.sort(key=lambda item: color_brightness(tuple(map(int, item[1][4:-1].split(',')))))
-    dwg = svgwrite.Drawing('path_data.svg')
+    dwg = svgwrite.Drawing('path_data.svg', profile=svg_elem.getAttribute('baseProfile'), size=(width, height), viewBox=svg_elem.getAttribute('viewBox'))
+    dwg.add(dwg.rect(insert=(0, 0), size=(width, height), fill=rect.getAttribute('fill'), fill_opacity=rect.getAttribute('fill-opacity')))
+    # Добавляем опорные точки
+    dwg.add(dwg.path(d=f"M0,0 L1,0 L1,1 L0,1 Z", fill="black"))
+    dwg.add(dwg.path(d=f"M{int(width)-1},0 L{width},0 L{width},1 L{int(width)-1},1 Z", fill="black"))
+    dwg.add(dwg.path(d=f"M0,{int(height)-1} L1,{int(height)-1} L1,{height} L0,{height} Z", fill="black"))
+    dwg.add(dwg.path(d=f"M{int(width)-1},{int(height)-1} L{width},{int(height)-1} L{width},{height} L{int(width)-1},{height} Z", fill="black"))
     for idx, color, path in path_data:
         dwg.add(dwg.path(d=path.getAttribute('d'), stroke=color, fill='none'))
     dwg.save()
@@ -25,9 +35,19 @@ def color_brightness(rgb):
 def process_svg(input_file, selected_indices, group_counter):
     doc = minidom.parse(input_file)
     paths = doc.getElementsByTagName('path')
+    rect = doc.getElementsByTagName('rect')[0]
+    svg_elem = doc.getElementsByTagName('svg')[0]
+    width = svg_elem.getAttribute('width')
+    height = svg_elem.getAttribute('height')
     selected_paths = [paths[i] for i in selected_indices]
     output_file = f"selected_paths_group_{group_counter}.svg"
-    dwg = svgwrite.Drawing(output_file)
+    dwg = svgwrite.Drawing(output_file, profile=svg_elem.getAttribute('baseProfile'), size=(width, height), viewBox=svg_elem.getAttribute('viewBox'))
+    dwg.add(dwg.rect(insert=(0, 0), size=(width, height), fill=rect.getAttribute('fill'), fill_opacity=rect.getAttribute('fill-opacity')))
+    # Добавляем опорные точки
+    dwg.add(dwg.path(d=f"M0,0 L1,0 L1,1 L0,1 Z", fill="black"))
+    dwg.add(dwg.path(d=f"M{int(width)-1},0 L{width},0 L{width},1 L{int(width)-1},1 Z", fill="black"))
+    dwg.add(dwg.path(d=f"M0,{int(height)-1} L1,{int(height)-1} L1,{height} L0,{height} Z", fill="black"))
+    dwg.add(dwg.path(d=f"M{int(width)-1},{int(height)-1} L{width},{int(height)-1} L{width},{height} L{int(width)-1},{height} Z", fill="black"))
     with open("all_paths.txt", "a") as all_paths_file:
         for path in selected_paths:
             dwg.add(dwg.path(d=path.getAttribute('d'), stroke=path.getAttribute('stroke'), fill='none'))
